@@ -4,6 +4,15 @@ package main
 import "fmt"
 
 // ======================================================================
+// PERIMETER INTERFACE — a second interface alongside Shape
+// ======================================================================
+// A type can satisfy multiple interfaces simultaneously with no extra code.
+// Any struct that has both Area() and Perimeter() methods satisfies BOTH interfaces.
+type Perimeter interface {
+	Perimeter() float64
+}
+
+// ======================================================================
 // STRUCTS — Go's version of classes (but simpler)
 // ======================================================================
 // Go has NO classes, NO class-based inheritance, NO constructors.
@@ -34,12 +43,25 @@ func (r Rectangle) Area() float64 {
 	return r.Width * r.Height
 }
 
+// Perimeter adds a second method — now Rectangle satisfies BOTH Shape AND Perimeter.
+// No declaration of "implements" needed for either interface.
+func (r Rectangle) Perimeter() float64 {
+	return 2 * (r.Width + r.Height)
+}
+
+// String satisfies the built-in fmt.Stringer interface (from the "fmt" package).
+// fmt.Println automatically calls String() if a type has it — no extra code needed.
+// This is Go's standard way to give a type a human-readable representation.
+func (r Rectangle) String() string {
+	return fmt.Sprintf("Rectangle(%.0f × %.0f)", r.Width, r.Height)
+}
+
 // Scale uses a POINTER receiver because it needs to MODIFY the original Rectangle.
 // The * before Rectangle means "pointer to Rectangle".
 // If you used a value receiver here, Scale() would modify a copy and the original would be unchanged.
 func (r *Rectangle) Scale(factor float64) {
 	// r is a pointer — r.Width dereferences it automatically (no need for (*r).Width).
-	r.Width *= factor  // same as r.Width = r.Width * factor
+	r.Width *= factor // same as r.Width = r.Width * factor
 	r.Height *= factor
 }
 
@@ -117,17 +139,40 @@ func main() {
 	fmt.Println()
 
 	// ======================================================================
+	// fmt.Stringer — automatic String() call
+	// ======================================================================
+	// fmt.Println checks if a value has a String() method (satisfies fmt.Stringer).
+	// If it does, Println calls it automatically — you get a custom representation.
+	rect2 := Rectangle{Width: 4, Height: 3}
+	fmt.Println(rect2) // prints: Rectangle(4 × 3)  ← calls rect2.String() automatically
+
+	fmt.Println()
+
+	// ======================================================================
+	// MULTIPLE INTERFACES — one type, two contracts
+	// ======================================================================
+	// Rectangle has Area(), Perimeter(), and String() — so it satisfies:
+	//   Shape      (requires Area())
+	//   Perimeter  (requires Perimeter())
+	//   fmt.Stringer (requires String())
+	// All at the same time, with zero extra declarations.
+	var p Perimeter = Rectangle{Width: 5, Height: 3}
+	fmt.Println("Perimeter:", p.Perimeter()) // 16
+
+	fmt.Println()
+
+	// ======================================================================
 	// INTERFACE IN ACTION — printArea accepts ANY Shape
 	// ======================================================================
 
 	// Passing a Rectangle — printArea doesn't know or care it's a Rectangle.
-	printArea(Rectangle{Width: 4, Height: 3})  // Area: 12.00
+	printArea(Rectangle{Width: 4, Height: 3}) // Area: 12.00
 
 	// Passing a Circle — same function, different type, correct behavior.
-	printArea(Circle{Radius: 5})               // Area: 78.54
+	printArea(Circle{Radius: 5}) // Area: 78.54
 
 	// Passing a Triangle — added AFTER printArea was written, no changes needed.
-	printArea(Triangle{Base: 6, Height: 4})    // Area: 12.00
+	printArea(Triangle{Base: 6, Height: 4}) // Area: 12.00
 
 	fmt.Println()
 

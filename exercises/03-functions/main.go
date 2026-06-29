@@ -145,7 +145,35 @@ func main() {
 	// - Otherwise return math.Sqrt(x), nil
 	// (You'll need to add "math" to the import block at the top)
 	// ======================================================================
+
+	// Uncomment and test once you implement safeSqrt above:
+	// root, err := safeSqrt(16)
+	// if err != nil {
+	//     fmt.Println("Error:", err)
+	// } else {
+	//     fmt.Println("sqrt(16) =", root) // should print: 4
+	// }
+	//
+	// root, err = safeSqrt(-4)
+	// if err != nil {
+	//     fmt.Println("Error:", err) // should print: cannot take square root of negative number
+	// } else {
+	//     fmt.Println("sqrt(-4) =", root)
+	// }
 }
+
+// ======================================================================
+// EXERCISE STUB — implement this function
+// ======================================================================
+// Step 1: Add "math" to the import block at the top alongside "fmt" and "strconv"
+// Step 2: Fill in the body below
+//
+// func safeSqrt(x float64) (float64, error) {
+//     if x < 0 {
+//         return 0, fmt.Errorf("???")   // return a descriptive error
+//     }
+//     return ???, nil                   // hint: math.Sqrt(x)
+// }
 
 // ======================================================================
 // QUESTIONS — Functions, Error Handling & Defer

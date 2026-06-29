@@ -177,6 +177,63 @@ func main() {
 		fmt.Println("From buffered channel:", v)
 	}
 
+	fmt.Println()
+
+	// ======================================================================
+	// DEMO 5 — select: wait on multiple channels at once
+	// ======================================================================
+	fmt.Println("=== Select demo ===")
+
+	// select is like a switch statement but for channel operations.
+	// It waits until ONE of the cases is ready, then executes that case.
+	// If multiple cases are ready at the same time, Go picks one at random.
+	ch1 := make(chan string, 1) // buffered so sends don't block
+	ch2 := make(chan string, 1)
+
+	// Send a value into ch1 from a goroutine after a short delay.
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		ch1 <- "result from ch1"
+	}()
+
+	// Send a value into ch2 from a goroutine after a longer delay.
+	go func() {
+		time.Sleep(150 * time.Millisecond)
+		ch2 <- "result from ch2"
+	}()
+
+	// select blocks until ONE channel is ready, then handles it.
+	// Because ch1 is faster, this will always print ch1's message first.
+	for i := 0; i < 2; i++ {
+		select {
+		case msg := <-ch1:
+			// This case fires when ch1 has a value ready.
+			fmt.Println("Received:", msg)
+		case msg := <-ch2:
+			// This case fires when ch2 has a value ready.
+			fmt.Println("Received:", msg)
+		}
+	}
+
+	// ======================================================================
+	// select with a timeout using time.After
+	// ======================================================================
+	// time.After(d) returns a channel that receives a value after duration d.
+	// Pairing it with select gives you a clean timeout pattern.
+	slow := make(chan string)
+	go func() {
+		time.Sleep(500 * time.Millisecond) // deliberately slow
+		slow <- "late value"
+	}()
+
+	select {
+	case v := <-slow:
+		fmt.Println("Got:", v)
+	case <-time.After(100 * time.Millisecond):
+		// This fires if no value arrives within 100ms.
+		fmt.Println("Timed out waiting for slow channel")
+	}
+
 	// ======================================================================
 	// EXERCISE FOR YOU
 	// 1. Write a function: sumRange(start, end int, ch chan int)
