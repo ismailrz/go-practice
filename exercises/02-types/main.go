@@ -27,7 +27,7 @@ func main() {
 
 	// "var" is used when you want to declare a variable WITHOUT immediately assigning a value,
 	// or when you need to be explicit about the type (e.g., at package level, or for clarity).
-	var count int     // declares count as int — Go sets it to 0 automatically
+	var count int      // declares count as int — Go sets it to 0 automatically
 	var message string // declares message as string — Go sets it to "" automatically
 
 	// In Python, uninitialized variables cause NameError.
@@ -96,3 +96,119 @@ func main() {
 	// 3. Print the entire map and also look up one specific key.
 	// ======================================================================
 }
+
+// ======================================================================
+// QUESTIONS — Types, Variables & Zero Values
+// ======================================================================
+//
+// CONCEPTUAL
+// ----------
+// Q1.  What is the difference between ":=" and "="?
+//      Can you use ":=" at the package level (outside a function)? Why not?
+//
+//      A: ":=" is the short variable declaration — it declares AND assigns in one step,
+//         with the type inferred from the right-hand side.
+//         "=" is plain assignment — the variable must already be declared.
+//         ":=" only works inside functions. At package level, Go requires explicit "var"
+//         declarations because the compiler processes them in a specific order,
+//         and ":=" would be ambiguous.
+//
+// Q2.  What is a zero value in Go? Why is it safer than null/undefined
+//      in languages like JavaScript or Python?
+//
+//      A: A zero value is the default value every variable gets when declared
+//         without an explicit assignment. Go guarantees this — you can never
+//         read an uninitialised variable.
+//         In JS, accessing an undefined variable can silently propagate NaN or
+//         crash at an unexpected point. In Go, you always know exactly what
+//         you have: 0, "", false, or nil — no surprises.
+//
+// Q3.  What is the zero value for each of these types?
+//      a) int       b) string      c) bool
+//      d) float64   e) []int       f) map[string]int
+//
+//      A: a) 0        b) ""      c) false
+//         d) 0.0      e) nil     f) nil
+//
+// Q4.  Why does writing to a nil map cause a panic but reading from it
+//      does not? What does this tell you about how maps work internally?
+//
+//      A: A nil map has no underlying hash table allocated.
+//         Reading is safe because Go detects nil and returns the zero value
+//         for the value type (no memory needed).
+//         Writing requires allocating a bucket in the hash table — which
+//         can't be done on nil, so Go panics rather than silently corrupt memory.
+//         Fix: always initialise maps with make(map[K]V) before writing.
+//
+// Q5.  What is the difference between a slice and an array in Go?
+//      When would you choose one over the other?
+//
+//      A: Array: fixed size, part of the type — [3]int and [4]int are different types.
+//               Copied by value when passed to functions.
+//         Slice: dynamic size, a view over an underlying array (pointer + length + capacity).
+//               Passed by reference-like header — cheap to pass around.
+//         In practice, use slices almost always. Arrays are used when the size is
+//         fixed and known at compile time (e.g., [16]byte for a UUID or hash).
+//
+// Q6.  What does the blank identifier "_" do?
+//      Give a situation where you would use it.
+//
+//      A: "_" discards a value — Go requires every declared variable to be used,
+//         so _ lets you intentionally ignore a return value without a compile error.
+//         Common uses:
+//           result, _ := strconv.Atoi(s)      // ignore the error (risky but sometimes OK)
+//           for _, v := range items { ... }   // ignore the index
+//
+// PRACTICAL
+// ---------
+// Q7.  What is the output of the following code, and why?
+//
+//      var s []int
+//      fmt.Println(s == nil)   // ?
+//      fmt.Println(len(s))     // ?
+//      s = append(s, 1, 2, 3)
+//      fmt.Println(s)          // ?
+//
+//      A: true      — a var-declared slice is nil
+//         0         — len(nil slice) is 0, not a panic
+//         [1 2 3]   — append works on nil slices, allocating a new backing array
+//
+// Q8.  Declare a map[string][]string that maps a person's name to a list
+//      of their hobbies. Add at least 2 people with multiple hobbies each.
+//      Loop over the map and print each person and their hobbies.
+//
+//      A: hobbies := map[string][]string{
+//             "Alice": {"reading", "cycling"},
+//             "Bob":   {"gaming", "cooking", "hiking"},
+//         }
+//         for name, list := range hobbies {
+//             fmt.Printf("%s: %v\n", name, list)
+//         }
+//
+// Q9.  How do you check if a key exists in a map?
+//      Write a short snippet using the "comma ok" idiom.
+//      (Hint: val, ok := myMap["key"])
+//
+//      A: val, ok := scores["Alice"]
+//         if ok {
+//             fmt.Println("Found:", val)
+//         } else {
+//             fmt.Println("Key not found")
+//         }
+//         Without the ok check, a missing key just returns the zero value (0 for int),
+//         which is indistinguishable from a key that exists with value 0.
+//
+// Q10. What is the difference between:
+//      a) var s string = "hello"
+//      b) s := "hello"
+//      c) const s = "hello"
+//      In what situations would you use each?
+//
+//      A: a) Verbose explicit declaration — useful at package level or when
+//            you want to be clear about the type.
+//         b) Short declaration — idiomatic inside functions when the type is obvious.
+//         c) Compile-time constant — the value is baked in at compile time,
+//            cannot be changed at runtime, and can be used in array sizes,
+//            switch cases, and iota enumerations. Use for magic values like
+//            MaxRetries = 3 or Pi = 3.14159.
+// ======================================================================

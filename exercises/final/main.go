@@ -31,9 +31,10 @@ type Result struct {
 // GOROUTINE FUNCTION — fetch one URL and send the Result into a channel
 // ======================================================================
 // Parameters:
-//   url     — the URL to fetch
-//   wg      — pointer to the WaitGroup so we can call Done() when finished
-//   results — a send-only channel (chan<- Result) to return the outcome
+//
+//	url     — the URL to fetch
+//	wg      — pointer to the WaitGroup so we can call Done() when finished
+//	results — a send-only channel (chan<- Result) to return the outcome
 //
 // "chan<- Result" is a SEND-ONLY channel — this function can only send, not receive.
 // This makes the intent clear and prevents accidental reads inside fetch().
@@ -171,3 +172,145 @@ func main() {
 	// 4. At the end, print which URL was the slowest.
 	// ======================================================================
 }
+
+func Abc() {}
+
+// ======================================================================
+// QUESTIONS — Bringing It All Together (Final Project)
+// ======================================================================
+//
+// CONCEPTUAL
+// ----------
+// Q1.  This program uses a buffered channel sized to len(urls).
+//      What would happen if we used an unbuffered channel instead,
+//      and why? How would you fix the deadlock without using a buffer?
+//
+//      A: With an unbuffered channel, each fetch() goroutine would block on
+//         "results <- Result{...}" until main() receives from the channel.
+//         But main() is blocked on wg.Wait() — so no one is receiving.
+//         All goroutines and main() are stuck waiting on each other: deadlock.
+//         Fix without a buffer: drain the channel in a separate goroutine
+//         before calling wg.Wait(), or use wg.Wait() in a goroutine and
+//         close results from there.
+//
+// Q2.  Why do we pass &wg (pointer to WaitGroup) into fetch() instead
+//      of passing wg by value? What would go wrong if we passed by value?
+//
+//      A: sync.WaitGroup contains internal state (a counter). If you pass it
+//         by value, fetch() gets its own copy of the WaitGroup — calling
+//         Done() on the copy decrements the copy's counter, not the original.
+//         The original wg.Wait() in main() would block forever because its
+//         counter never reaches zero. Always pass WaitGroup as a pointer.
+//
+// Q3.  Why is defer resp.Body.Close() important here?
+//      What real-world problem does it prevent?
+//
+//      A: HTTP responses keep a TCP connection open until the body is closed.
+//         If you don't close it, the connection is never returned to the pool,
+//         eventually exhausting the connection limit and causing new requests
+//         to hang or fail. In a loop fetching many URLs (like this program),
+//         not closing bodies causes a connection leak that grows until the
+//         OS refuses new connections.
+//
+// Q4.  The fetch() function parameter is "chan<- Result" (send-only).
+//      What does this restriction give us? Could you write it as "chan Result"?
+//      What is the benefit of being explicit?
+//
+//      A: Yes, chan Result (bidirectional) also compiles fine here.
+//         But chan<- Result documents intent: fetch() only produces results,
+//         it never reads from the channel. The compiler enforces this —
+//         if someone accidentally adds "<-results" inside fetch(), it won't compile.
+//         This prevents bugs and makes the code self-documenting.
+//
+// Q5.  We call wg.Wait() and then close(results) before the range loop.
+//      What would happen if we called close(results) BEFORE wg.Wait()?
+//
+//      A: The goroutines would still be running and would try to send into
+//         a closed channel → panic: "send on closed channel".
+//         Always wait for all senders to finish before closing the channel.
+//         The pattern is always: wg.Wait() → close(ch) → range ch.
+//
+// Q6.  What does os.Stderr mean and why do we write error messages there
+//      instead of using fmt.Println (which writes to os.Stdout)?
+//
+//      A: Every process has two standard output streams:
+//           stdout (os.Stdout) — normal program output, meant for consumers.
+//           stderr (os.Stderr) — diagnostic/error messages, meant for humans.
+//         Keeping them separate lets users pipe stdout to a file or another
+//         program while still seeing errors in the terminal:
+//           go run main.go urls.txt > results.txt   (errors still appear on screen)
+//
+// PRACTICAL
+// ---------
+// Q7.  Add a timeout to each HTTP request so that slow URLs don't hang
+//      forever. Hint: create a custom http.Client with a Timeout field.
+//      http.Client{Timeout: 3 * time.Second}
+//      Replace http.Get(url) with client.Get(url).
+//
+//      A: client := &http.Client{Timeout: 3 * time.Second}
+//         resp, err := client.Get(url)
+//         After the timeout, http.Get returns an error with "context deadline exceeded".
+//         The existing "if err != nil" block handles it automatically — no other changes needed.
+//
+// Q8.  Add rate limiting: instead of firing all goroutines at once,
+//      only allow 2 concurrent requests at a time using a buffered channel
+//      as a semaphore. Pattern:
+//        sem := make(chan struct{}, 2)
+//        sem <- struct{}{}    // acquire
+//        defer func() { <-sem }()  // release
+//
+//      A: sem := make(chan struct{}, 2)  // capacity = max concurrency
+//         Inside fetch(), at the top:
+//           sem <- struct{}{}            // blocks if 2 goroutines already running
+//           defer func() { <-sem }()     // release slot when done
+//         Now at most 2 HTTP requests run simultaneously — useful to avoid
+//         overwhelming a server or hitting rate limits.
+//
+// Q9.  Change the program to also write all results to a file called
+//      "results.txt" in addition to printing to the terminal.
+//      Use os.Create and fmt.Fprintf to write to the file.
+//      Use defer to close the file.
+//
+//      A: outFile, err := os.Create("results.txt")
+//         if err != nil { ... }
+//         defer outFile.Close()
+//         Then in the results loop, write to both:
+//           fmt.Printf("%d  %s\n", r.Status, r.URL)
+//           fmt.Fprintf(outFile, "%d  %s\n", r.Status, r.URL)
+//         Or use io.MultiWriter to write to both with one call:
+//           w := io.MultiWriter(os.Stdout, outFile)
+//           fmt.Fprintf(w, "%d  %s\n", r.Status, r.URL)
+//
+// Q10. Add a summary at the end that prints:
+//      - Total URLs fetched
+//      - How many returned 2xx status codes
+//      - How many returned 4xx or 5xx
+//      - How many failed with a network error
+//
+//      A: Collect results into a []Result slice, then:
+//         var ok2xx, err4xx5xx, netErr int
+//         for _, r := range allResults {
+//             switch {
+//             case r.Err != nil:                          netErr++
+//             case r.Status >= 200 && r.Status < 300:    ok2xx++
+//             default:                                    err4xx5xx++
+//             }
+//         }
+//         fmt.Printf("Total: %d  2xx: %d  4xx/5xx: %d  errors: %d\n",
+//             len(allResults), ok2xx, err4xx5xx, netErr)
+//
+// Q11. Right now the order of results is non-deterministic (whichever
+//      goroutine finishes first). How would you sort the results by
+//      URL alphabetically before printing?
+//      Hint: collect results into a []Result slice, then use sort.Slice().
+//
+//      A: Drain the channel into a slice first:
+//         var all []Result
+//         for r := range results { all = append(all, r) }
+//         Then sort:
+//         sort.Slice(all, func(i, j int) bool {
+//             return all[i].URL < all[j].URL
+//         })
+//         Then print the sorted slice.
+//         This gives deterministic output regardless of which goroutine finished first.
+// ======================================================================

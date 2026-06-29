@@ -188,3 +188,167 @@ func main() {
 	//    Expected answer: 5050
 	// ======================================================================
 }
+
+// ======================================================================
+// QUESTIONS — Goroutines & Channels
+// ======================================================================
+//
+// CONCEPTUAL
+// ----------
+// Q1.  What is a goroutine? How is it different from an OS thread?
+//      Why can you run 100,000 goroutines but not 100,000 OS threads?
+//
+//      A: A goroutine is a lightweight function running concurrently, managed
+//         by the Go runtime (not the OS).
+//         OS thread: ~1 MB fixed stack, scheduled by the OS kernel — expensive.
+//         Goroutine:  ~2 KB initial stack (grows/shrinks as needed), scheduled
+//         by Go's own M:N scheduler — many goroutines multiplexed onto few OS threads.
+//         100k goroutines ≈ ~200 MB RAM. 100k OS threads ≈ ~100 GB RAM — not feasible.
+//
+// Q2.  What happens if main() returns while goroutines are still running?
+//      How do you prevent this correctly?
+//
+//      A: When main() returns, the entire program exits immediately — all
+//         running goroutines are killed without cleanup.
+//         Correct ways to wait:
+//           1. sync.WaitGroup — wg.Add/Done/Wait (idiomatic for fan-out work)
+//           2. Receive on a channel — block until goroutine sends a signal/result
+//         time.Sleep is NOT correct — you're guessing the duration.
+//
+// Q3.  What is the difference between an unbuffered and a buffered channel?
+//      When does each one block on send? When does each block on receive?
+//
+//      A: Unbuffered (make(chan T)):
+//           Send blocks until a receiver is ready.
+//           Receive blocks until a sender is ready.
+//           Both sides must be ready at the same time — a rendezvous point.
+//         Buffered (make(chan T, N)):
+//           Send blocks only when the buffer is FULL.
+//           Receive blocks only when the buffer is EMPTY.
+//           Up to N values can be queued without a receiver being ready.
+//
+// Q4.  What does closing a channel do?
+//      What happens if you try to send to a closed channel?
+//      What happens if you receive from a closed channel?
+//
+//      A: close(ch) signals that no more values will be sent.
+//         Sending to a closed channel → panic (runtime error).
+//         Receiving from a closed channel → returns immediately with the
+//         zero value of the channel's type, and ok=false in the "v, ok := <-ch" form.
+//         A "for range ch" loop exits automatically when the channel is closed and drained.
+//
+// Q5.  What is a "send-only" channel (chan<-) and a "receive-only" channel
+//      (<-chan)? Why would you use directional channels in function signatures?
+//
+//      A: chan<- T  — can only send into this channel (write-only)
+//         <-chan T  — can only receive from this channel (read-only)
+//         Using directional types in function signatures documents intent clearly
+//         and lets the compiler catch mistakes (e.g., accidentally receiving in
+//         a producer function). The caller still creates a bidirectional chan T
+//         and passes it — Go converts automatically.
+//
+// Q6.  What is a data race? How do goroutines cause them?
+//      Name two ways to avoid data races in Go.
+//
+//      A: A data race occurs when two goroutines access the same memory location
+//         concurrently and at least one of the accesses is a write, with no
+//         synchronisation between them. The result is undefined behaviour.
+//         Two ways to avoid:
+//           1. Channels — pass ownership of data through the channel instead of sharing.
+//           2. sync.Mutex — lock before reading/writing shared state, unlock after.
+//         Run "go test -race ./..." or "go run -race main.go" to detect races.
+//
+// Q7.  What is the "closure trap" in goroutine loops, and how do you
+//      avoid it? (Hint: relates to variable capture by closures.)
+//
+//      A: When a goroutine closure captures a loop variable directly, all goroutines
+//         may see the same final value of the variable because the variable is shared:
+//           for i := 0; i < 3; i++ {
+//               go func() { fmt.Println(i) }()  // BUG: all may print 3
+//           }
+//         Fix: pass the variable as a function argument to create a per-iteration copy:
+//           for i := 0; i < 3; i++ {
+//               go func(id int) { fmt.Println(id) }(i)  // CORRECT
+//           }
+//         In Go 1.22+, loop variables are scoped per-iteration by default, fixing this.
+//
+// PRACTICAL
+// ---------
+// Q8.  What is the output of this code? Explain why.
+//
+//      ch := make(chan int)
+//      ch <- 1
+//      fmt.Println(<-ch)
+//
+//      A: This DEADLOCKS. "ch <- 1" on an unbuffered channel blocks forever
+//         because there is no goroutine ready to receive.
+//         The Go runtime detects the deadlock and panics:
+//         "fatal error: all goroutines are asleep - deadlock!"
+//
+// Q9.  Rewrite the above to NOT deadlock, using a goroutine for the send.
+//
+//      A: ch := make(chan int)
+//         go func() { ch <- 1 }()   // send in a goroutine — doesn't block main
+//         fmt.Println(<-ch)          // receive in main — prints: 1
+//
+// Q10. Write a pipeline using two channels:
+//      - Generator goroutine: sends integers 1..5 into channel A, then closes A.
+//      - Squarer goroutine:   reads from A, squares each, sends into channel B.
+//      - main():              reads from B and prints each result.
+//      This is the classic Go "pipeline" pattern.
+//
+//      A: func generate(out chan<- int) {
+//             for i := 1; i <= 5; i++ { out <- i }
+//             close(out)
+//         }
+//         func squarer(in <-chan int, out chan<- int) {
+//             for v := range in { out <- v * v }
+//             close(out)
+//         }
+//         In main():
+//           a := make(chan int)
+//           b := make(chan int)
+//           go generate(a)
+//           go squarer(a, b)
+//           for v := range b { fmt.Println(v) }  // 1 4 9 16 25
+//
+// Q11. Use a select statement to read from two channels (ch1 and ch2)
+//      and print which channel delivered a value. What is "select" used for?
+//      Hint: select { case v := <-ch1: ... case v := <-ch2: ... }
+//
+//      A: select lets a goroutine wait on MULTIPLE channel operations simultaneously,
+//         proceeding with whichever one is ready first (random if multiple are ready).
+//         ch1 := make(chan string, 1)
+//         ch2 := make(chan string, 1)
+//         ch1 <- "one"
+//         select {
+//         case v := <-ch1:
+//             fmt.Println("from ch1:", v)
+//         case v := <-ch2:
+//             fmt.Println("from ch2:", v)
+//         }
+//         Use cases: timeouts (with time.After), cancellation, fan-in from multiple sources.
+//
+// Q12. What is sync.Mutex and when would you use it INSTEAD of a channel?
+//      Write a thread-safe counter using sync.Mutex with Inc() and Value() methods.
+//
+//      A: sync.Mutex protects shared state with a mutual exclusion lock.
+//         Use Mutex when multiple goroutines need to READ and WRITE the same
+//         variable and passing ownership via a channel would be awkward.
+//         Use channels when goroutines communicate results or pipeline data.
+//
+//         type Counter struct {
+//             mu    sync.Mutex
+//             count int
+//         }
+//         func (c *Counter) Inc() {
+//             c.mu.Lock()
+//             defer c.mu.Unlock()
+//             c.count++
+//         }
+//         func (c *Counter) Value() int {
+//             c.mu.Lock()
+//             defer c.mu.Unlock()
+//             return c.count
+//         }
+// ======================================================================

@@ -160,3 +160,155 @@ func main() {
 	//    printArea and the range loop will work without any other changes.
 	// ======================================================================
 }
+
+// ======================================================================
+// QUESTIONS — Structs, Methods & Interfaces
+// ======================================================================
+//
+// CONCEPTUAL
+// ----------
+// Q1.  Go has no classes. What is the Go equivalent, and how do you
+//      attach behaviour (methods) to data?
+//
+//      A: Go uses structs to hold data and methods to define behaviour.
+//         A method is just a function with a receiver argument:
+//           func (r Rectangle) Area() float64 { ... }
+//         There is no constructor either — use a plain function like
+//         NewRectangle(w, h float64) Rectangle as a convention.
+//
+// Q2.  What is the difference between a value receiver and a pointer
+//      receiver? Write a rule of thumb for when to use each.
+//
+//      A: Value receiver  (r Rectangle)  — operates on a COPY. Cannot modify original.
+//         Pointer receiver (*Rectangle)  — operates on the ORIGINAL. Can modify it.
+//         Rule of thumb:
+//           Use pointer receiver if the method modifies the struct.
+//           Use pointer receiver if the struct is large (avoids copying).
+//           Use value receiver if the method only reads and the struct is small.
+//           Be consistent: if any method uses a pointer receiver, use pointer
+//           receivers for all methods on that type.
+//
+// Q3.  Go interfaces are "implicit" — what does that mean?
+//      How is this different from Java's "implements" keyword?
+//
+//      A: In Go, a type satisfies an interface automatically if it has all
+//         the required methods — no declaration is needed.
+//         In Java you must write: class Circle implements Shape { ... }
+//         In Go, if Circle has Area() float64, it satisfies Shape silently.
+//         Benefit: you can define an interface for a type you don't own,
+//         and third-party types satisfy your interface without modification.
+//
+// Q4.  What is the empty interface (interface{} or "any") and when
+//      would you use it? What is the trade-off?
+//
+//      A: interface{} (alias: "any" since Go 1.18) is satisfied by every type —
+//         it has zero required methods so anything fits.
+//         Use it when you genuinely don't know the type at compile time,
+//         e.g., fmt.Println(a ...any), JSON unmarshalling into interface{}.
+//         Trade-off: you lose type safety — you must use type assertions or
+//         type switches to get the value back, which can panic at runtime.
+//         Prefer generics (Go 1.18+) or concrete types when possible.
+//
+// Q5.  Can a struct implement multiple interfaces at the same time?
+//      Give an example using the Shape interface and a new
+//      Perimeter interface.
+//
+//      A: Yes — a type can satisfy as many interfaces as it has methods for.
+//         type Perimeter interface { Perimeter() float64 }
+//         If Rectangle has both Area() and Perimeter() methods, it satisfies
+//         both Shape and Perimeter simultaneously with no extra code.
+//         This is how Go achieves composable, flexible design.
+//
+// Q6.  What is "embedding" in Go? How does it differ from inheritance?
+//      Example: type ColoredShape struct { Shape; Color string }
+//
+//      A: Embedding promotes the methods of an inner type to the outer type.
+//         type Animal struct { name string }
+//         func (a Animal) Speak() string { return a.name }
+//         type Dog struct { Animal }       // Dog embeds Animal
+//         d := Dog{Animal{"Rex"}}
+//         d.Speak()                        // promoted — no redefinition needed
+//         Unlike inheritance, there is no is-a relationship. Dog doesn't "extend"
+//         Animal — it simply has Animal's methods promoted. You can still override
+//         them by defining a method with the same name on Dog.
+//
+// PRACTICAL
+// ---------
+// Q7.  What does this print and why?
+//
+//      type Counter struct{ count int }
+//      func (c Counter) Increment() { c.count++ }   // value receiver
+//      c := Counter{}
+//      c.Increment()
+//      c.Increment()
+//      fmt.Println(c.count)   // ?
+//
+//      A: Prints 0.
+//         Increment has a VALUE receiver, so it operates on a copy of c.
+//         The original c.count is never changed.
+//         Fix: change to func (c *Counter) Increment() { c.count++ }
+//         Then c.count would be 2.
+//
+// Q8.  Create a Stringer interface with one method: String() string.
+//      Add a String() method to Rectangle so it returns a formatted
+//      description like "Rectangle(4x3)".
+//      Hint: fmt.Println automatically calls String() if it exists —
+//      this is the fmt.Stringer interface from the standard library.
+//
+//      A: func (r Rectangle) String() string {
+//             return fmt.Sprintf("Rectangle(%.0fx%.0f)", r.Width, r.Height)
+//         }
+//         Now fmt.Println(rect) automatically calls rect.String() and prints:
+//         Rectangle(4x3)
+//         This works because fmt checks if the value satisfies fmt.Stringer.
+//
+// Q9.  Write a function totalArea(shapes []Shape) float64 that
+//      returns the sum of all shapes' areas. Then call it from main()
+//      with a mixed slice of Rectangle, Circle, and Triangle values.
+//
+//      A: func totalArea(shapes []Shape) float64 {
+//             total := 0.0
+//             for _, s := range shapes {
+//                 total += s.Area()
+//             }
+//             return total
+//         }
+//         In main():
+//         shapes := []Shape{Rectangle{3,4}, Circle{5}, Triangle{6,4}}
+//         fmt.Println(totalArea(shapes))
+//
+// Q10. What happens if you try to assign a *Rectangle (pointer) to a
+//      Shape interface variable, but Rectangle only has value receivers?
+//      What if Rectangle has a pointer receiver — does *Rectangle still
+//      satisfy Shape? Does Rectangle (non-pointer)?
+//
+//      A: If Rectangle has only VALUE receivers:
+//           Both Rectangle and *Rectangle satisfy Shape.
+//           Go automatically dereferences pointers for value-receiver methods.
+//         If Rectangle has a POINTER receiver for Area():
+//           Only *Rectangle satisfies Shape — NOT Rectangle (value).
+//           Because Go cannot take the address of a non-addressable value.
+//         Rule: pointer receiver → only pointer satisfies the interface.
+//               value receiver  → both value and pointer satisfy the interface.
+//
+// Q11. Create a Logger interface with Log(message string).
+//      Implement it with two structs: ConsoleLogger (prints to stdout)
+//      and SilentLogger (does nothing). Write a function
+//      process(l Logger) that logs "processing...".
+//      Swap between the two implementations in main().
+//
+//      A: type Logger interface { Log(message string) }
+//
+//         type ConsoleLogger struct{}
+//         func (c ConsoleLogger) Log(msg string) { fmt.Println("[LOG]", msg) }
+//
+//         type SilentLogger struct{}
+//         func (s SilentLogger) Log(msg string) {}   // intentionally empty
+//
+//         func process(l Logger) { l.Log("processing...") }
+//
+//         In main():
+//           process(ConsoleLogger{})  // prints: [LOG] processing...
+//           process(SilentLogger{})   // prints nothing
+//         This is the Strategy pattern — swap behaviour without changing process().
+// ======================================================================
