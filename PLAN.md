@@ -60,6 +60,8 @@ go build .         # produce binary
 ### Hands-on (2 min)
 > "Initialize a module called `workshop`, print your name."
 
+Practice file: `exercises/hands-on/types.go`
+
 ---
 
 ## Topic 2 — Types, Variables & Zero Values (10 min)
@@ -96,6 +98,8 @@ In Go, every type has a **zero value**. You always know what you have.
 
 ### Hands-on (2 min)
 > "Declare a map of string→int without initializing it. Try to write to it. See what happens. Then fix it with `make`."
+
+Practice files: `exercises/hands-on/types.go`, `exercises/hands-on/loop.go`, `exercises/hands-on/array.go`, `exercises/hands-on/slice.go`, `exercises/hands-on/map.go`
 
 ---
 
@@ -144,6 +148,8 @@ func readFile() {
 
 ### Hands-on (3 min)
 > "Write a function `parseInt(s string) (int, error)` that wraps `strconv.Atoi`. Call it with `"42"` and `"abc"` and handle both cases."
+
+Practice files: `exercises/hands-on/function.go`, `exercises/hands-on/error.go`
 
 ---
 
@@ -210,6 +216,8 @@ func main() {
 
 ### Hands-on (5 min)
 > "Add a `Triangle` struct with a `Base` and `Height`. Give it an `Area()` method. Pass it to `printArea` — it works without changing `printArea`."
+
+Practice files: `exercises/hands-on/struct.go`, `exercises/hands-on/pointer.go`
 
 ---
 
@@ -298,6 +306,8 @@ func main() {
 
 ### Hands-on (5 min)
 > "Launch 3 goroutines. Each should compute the square of a number (1, 2, 3) and send it back on a shared channel. Collect all 3 results in main."
+
+Practice files: `exercises/hands-on/goroutine.go`, `exercises/hands-on/goroutine-channel.go`, `exercises/hands-on/goroutine-wait-group.go`
 
 ---
 

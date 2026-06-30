@@ -81,24 +81,47 @@ Full breakdown with timing, key points, and talking notes: [`PLAN.md`](PLAN.md)
 
 ---
 
+## Hands-on Practice Files
+
+Shorter, single-topic files for quick practice during the session.
+Run any file with `go run exercises/hands-on/<file>.go`.
+
+| File | Concepts |
+|------|---------|
+| [types.go](exercises/hands-on/types.go) | bool, int, float64, string, byte, rune, conversions, iota |
+| [loop.go](exercises/hands-on/loop.go) | classic for, while-style, break, continue, range, FizzBuzz |
+| [array.go](exercises/hands-on/array.go) | declaration, access, range, value semantics, array→slice |
+| [slice.go](exercises/hands-on/slice.go) | make, append, slicing, copy, delete element |
+| [map.go](exercises/hands-on/map.go) | literal, make, CRUD, comma-ok, range, word count |
+| [function.go](exercises/hands-on/function.go) | multiple returns, variadic, first-class functions, closures, defer, recursion |
+| [pointer.go](exercises/hands-on/pointer.go) | `&`, `*`, pass-by-value vs pointer, nil check, `new()` |
+| [struct.go](exercises/hands-on/struct.go) | value/pointer receivers, `fmt.Stringer`, embedding, interfaces |
+| [error.go](exercises/hands-on/error.go) | `errors.New`, `fmt.Errorf`, sentinel errors, custom error type, `errors.Is/As` |
+| [goroutine.go](exercises/hands-on/goroutine.go) | goroutines, unbuffered/buffered channels, WaitGroup, select, Mutex |
+| [goroutine-channel.go](exercises/hands-on/goroutine-channel.go) | channel basics — send, receive, buffered channel |
+| [goroutine-wait-group.go](exercises/hands-on/goroutine-wait-group.go) | WaitGroup pattern, concurrent tasks |
+
+---
+
 ## Coverage vs Go Fundamentals
 
 ### Priority 1 — Covered ✅
 
 | Topic | Exercise |
 |-------|----------|
-| Variables | 02-types |
-| Functions | 03-functions |
-| Arrays & Slices | 08-slices |
-| Maps | 02-types |
-| Structs | 04-structs |
-| Methods | 04-structs |
-| Pointers | 06-pointers |
-| Interfaces | 04-structs, 10-type-assertions |
-| Error Handling | 03-functions |
-| Goroutines | 05-goroutines |
-| Channels | 05-goroutines |
-| WaitGroup | 05-goroutines |
+| Variables | 02-types, hands-on/types.go |
+| Functions | 03-functions, hands-on/function.go |
+| Arrays & Slices | 08-slices, hands-on/array.go, hands-on/slice.go |
+| Maps | 02-types, hands-on/map.go |
+| Structs | 04-structs, hands-on/struct.go |
+| Methods | 04-structs, hands-on/struct.go |
+| Pointers | 06-pointers, hands-on/pointer.go |
+| Interfaces | 04-structs, 10-type-assertions, hands-on/struct.go |
+| Error Handling | 03-functions, hands-on/error.go |
+| Goroutines | 05-goroutines, hands-on/goroutine.go, hands-on/goroutine-channel.go |
+| Channels | 05-goroutines, hands-on/goroutine-channel.go |
+| WaitGroup | 05-goroutines, hands-on/goroutine-wait-group.go |
+| Mutex | hands-on/goroutine.go |
 | Unit Testing | 11-testing |
 
 ### Priority 1 — Not Covered
@@ -107,7 +130,6 @@ Full breakdown with timing, key points, and talking notes: [`PLAN.md`](PLAN.md)
 |-------|-------|
 | JSON | `encoding/json`, Marshal/Unmarshal, struct tags |
 | Context | Cancellation, deadlines, goroutine lifecycle |
-| Mutex | `sync.Mutex` for shared state protection |
 
 ### Priority 2 (Advanced / Follow-up Session)
 
